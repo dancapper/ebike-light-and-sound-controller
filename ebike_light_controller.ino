@@ -1,12 +1,12 @@
 // E-Bike Lighting Controller
 
 #define versionMajor       1
-#define versionMinor       0
+#define versionMinor       01
 
 // Hardware configuration
 
 #define debug           false  // Debug over serial
-#define sensorPin         A0  // select the input pin for the potentiometer
+#define sensorPin         A0  // select the input pin for the LDR
 #define hlPin             10  // select the pin for the headlight driver
 #define rearPin           11  // pin for rear light
 #define soundPinStart      5  // startup sound pin
@@ -18,12 +18,12 @@
 
 // Default Values todo: make configurable on the fly
 
-boolean flashFrontLight = true;     // Flash front light in daylight?
-int rearFlashRate = 400;           // msec timer for rear light, also used for front light
+boolean flashFrontLight = true;   // Flash front light in daylight?
+int rearFlashRate = 400;          // msec timer for rear light, also used for front light
 int frontFlashBrightness = 128;   // Brightness of front light when flashing
 int rearLowBrightness = 128;      // "off" brightness of rear light when headlight is on
-int ledBrightness = 80;          // Brightness of indicator LED
-int threshold = 150;              // what threshold to turn on lighting
+int ledBrightness = 80;           // Brightness of indicator LED in darkness
+int threshold = 150;              // what LDR threshold to turn on lighting
 int stickiness = 20;              // how far past threshold to change (provides hysteresis)
 int sampleDelay = 300;            // msec between samples
 int samplesToUse = 5;             // how many samples to debounce light sensor
@@ -51,6 +51,7 @@ void setup() {
   pinMode(hlPin, OUTPUT);
   pinMode(rearPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(hornPin, INPUT_PULLUP);
   pinMode(ledPin, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(buttonPin), ButtonPress, FALLING);
   attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
@@ -152,7 +153,8 @@ ISR(TIMER0_COMPA_vect){ // Tricksy timer used to bit bang flashing LEDs
 }
 
 void HornPress() {
-  PlaySound(soundPinBell);
+  if (digitalRead(hornPin) == LOW)
+    PlaySound(soundPinBell);
 }
 
 void ButtonPress() {
@@ -209,7 +211,10 @@ void StopSounds() {
 
 void LED(boolean ledState) {
   if(ledState) {
-    analogWrite(ledPin, ledBrightness);
+    if(frontLightState)
+      analogWrite(ledPin, ledBrightness);
+    else
+      digitalWrite(ledPin, HIGH);
   } else {
     digitalWrite(ledPin, LOW);
   }
