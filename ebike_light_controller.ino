@@ -1,20 +1,47 @@
 // E-Bike Lighting Controller
+//
+// github.com/dancapper/ebike-light-and-sound-controller
+//
+// license: use however you like
 
 #define versionMajor       1
-#define versionMinor       01
+#define versionMinor       02
 
 // Hardware configuration
 
-#define debug           false  // Debug over serial
+// I used an Arduino Pro Mini clone, so you may prefer different pinouts
+
+#define debug           false  // Debug over serial, recommend false unless debugging for better performance
+
+// LDR circuit - LDR to Gnd, 47k to VCC
+
 #define sensorPin         A0  // select the input pin for the LDR
+
+// drivers - I used opto isolated MOSFET switch modules, high is "on"
+
 #define hlPin             10  // select the pin for the headlight driver
 #define rearPin           11  // pin for rear light
-#define soundPinStart      5  // startup sound pin
-#define soundPinMusic      4  // ride of the valkyries
-#define soundPinBell       7  // bell sound
-#define buttonPin          2  // input button
-#define hornPin            3  // horn button
+
+// Button functions:
+// <1s = Auto / Headlight On toggle
+// >1s <5s = Lights off completely
+// >5s = play music
+
+#define buttonPin          2  // input button, switch to ground, multifunction
+
+// Horn pin activates a sound of your choosing
+
+#define hornPin            3  // horn button, switch to ground
+
+// LED indicates current mode; flash for flash, on for headlight, off for no lights
+
 #define ledPin             6  // indicator led
+
+// Sound pins - using a 1k resistor to input pins on a BY8301 module
+
+#define soundPinStart      5  // startup sound pin
+#define soundPinMusic      4  // your choice of music for effect
+#define soundPinBell       7  // bell sound
 
 // Default Values todo: make configurable on the fly
 
@@ -28,7 +55,7 @@ int stickiness = 20;              // how far past threshold to change (provides 
 int sampleDelay = 300;            // msec between samples
 int samplesToUse = 5;             // how many samples to debounce light sensor
 
-// Internal Variables
+// Internal Variables do not alter
 
 int sensorValue = 0;   // variable to store the value coming from the sensor
 boolean lastSample;    // used to debounce light sensor
@@ -47,7 +74,13 @@ int loopstart = 0;
 int looptook = 0;
 
 void setup() {
-  // declare the hlPin as an OUTPUT:
+  delay(500);              // just a little warmup time, to allow flashing if there's an issue with interrupts etc
+
+  if(debug){
+            Serial.begin(57600);
+            Serial.println("Ebike Lighting Controller - version " + String(versionMajor) + "." + String(versionMinor)); 
+         }
+
   pinMode(hlPin, OUTPUT);
   pinMode(rearPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
@@ -55,16 +88,6 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(buttonPin), ButtonPress, FALLING);
   attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
-
-
-// todo: make this work  attachInterrupt(digitalPinToInterrupt(hornPin), ButtonPress, FALLING);
- 
-  if(debug){
-            Serial.begin(57600);
-            Serial.println("Ebike Lighting Controller - version " + String(versionMajor) + "." + String(versionMinor)); 
-         }
-  
-  delay(200);
   
   OCR0A = 0xAF;            // use the same timer as the millis() function
   TIMSK0 |= _BV(OCIE0A);
@@ -75,10 +98,10 @@ void setup() {
 }
 
 void loop() {
-      
+      // Since all my functions are time critical, I'm using the timer function instead
 }
 
-ISR(TIMER0_COMPA_vect){ // Tricksy timer used to bit bang flashing LEDs
+ISR(TIMER0_COMPA_vect){
   if(debug) 
     loopstart = millis();
   
