@@ -5,13 +5,13 @@
 // license: use however you like
 
 #define versionMajor       1
-#define versionMinor       03
+#define versionMinor       04
 
 // Hardware configuration
 
 // I used an Arduino Pro Mini clone, so you may prefer different pinouts
 
-#define debug           false  // Debug over serial, recommend false unless debugging for better performance
+#define debug          false  // Debug over serial, recommend false unless debugging for better performance
 
 // LDR circuit - LDR to Gnd, 47k to VCC
 
@@ -50,13 +50,13 @@
 
 boolean flashFrontLight = true;   // Flash front light in daylight?
 int rearFlashRate = 400;          // msec timer for rear light, also used for front light
-int frontFlashBrightness = 128;   // Brightness of front light when flashing
+int frontFlashBrightness = 255;   // Brightness of front light when flashing, 255 for "on"
 int rearLowBrightness = 128;      // "off" brightness of rear light when headlight is on
 int ledBrightness = 80;           // Brightness of indicator LED in darkness
 int threshold = 150;              // what LDR threshold to turn on lighting
 int stickiness = 20;              // how far past threshold to change (provides hysteresis)
 int sampleDelay = 300;            // msec between samples
-int samplesToUse = 5;             // how many samples to debounce light sensor
+int samplesToUse = 3;             // how many samples to debounce light sensor
 
 // Internal Variables do not alter
 
@@ -190,7 +190,7 @@ void HornPress() {
 }
 
 void HornRelease() {
-  if (hornticks >= 500) {
+  if (hornticks >= 500)
     PlaySound(soundPinMusic);
   hornticks = 0;
   attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
