@@ -5,7 +5,7 @@
 // license: use however you like
 
 #define versionMajor       1
-#define versionMinor       02
+#define versionMinor       03
 
 // Hardware configuration
 
@@ -29,7 +29,10 @@
 
 #define buttonPin          2  // input button, switch to ground, multifunction
 
-// Horn pin activates a sound of your choosing
+// Horn button
+// Immediate = play bell sound
+// > 600ms = play music
+// to stop music - press bell again
 
 #define hornPin            3  // horn button, switch to ground
 
@@ -62,11 +65,12 @@ boolean lastSample;    // used to debounce light sensor
 boolean currentState;  // used to debounce light sensor
 int sampleCount = 0;   // used to debounce light sensor
 boolean frontLightState = false; // used for flashing
-boolean rearLightState = false; 
-boolean autoLight = true; 
+boolean rearLightState = false;
+boolean autoLight = true;
 boolean power = true;
 int ticks = 0;
 int buttonticks = 0;
+int hornticks = 0;
 int soundticks = 0;
 int sensorticks = 0;
 int soundPlaying = 0;
@@ -78,7 +82,7 @@ void setup() {
 
   if(debug){
             Serial.begin(57600);
-            Serial.println("Ebike Lighting Controller - version " + String(versionMajor) + "." + String(versionMinor)); 
+            Serial.println("Ebike Lighting Controller - version " + String(versionMajor) + "." + String(versionMinor));
          }
 
   pinMode(hlPin, OUTPUT);
@@ -88,12 +92,12 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(buttonPin), ButtonPress, FALLING);
   attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
-  
+
   OCR0A = 0xAF;            // use the same timer as the millis() function
   TIMSK0 |= _BV(OCIE0A);
 
   // Play a startup sound
-  
+
   PlaySound(soundPinStart);
 }
 
@@ -102,18 +106,19 @@ void loop() {
 }
 
 ISR(TIMER0_COMPA_vect){
-  if(debug) 
+  if(debug)
     loopstart = millis();
-  
+
   ticks++;
   buttonticks++;
   soundticks++; // used to pulse sound output
   sensorticks++;
+  hornticks++;
 
   if(ticks == rearFlashRate){
     ticks = 0;
-    if(rearLightState) {
-      if(frontLightState && power) {
+    if(rearLightState && power) {
+      if(frontLightState) {
         RL(rearLowBrightness);
       } else {
         RL(false);
@@ -121,25 +126,27 @@ ISR(TIMER0_COMPA_vect){
       }
       if(flashFrontLight &! frontLightState)
         HL(false, false);
-
     } else if (power) {
       RL(true);
       LED(true);
       if(flashFrontLight &! frontLightState)
         HL(frontFlashBrightness);
+    } else { // [power is off]
+      RL(false);
+      LED(false);
     }
   }
-  
+
   if(soundticks == 100) {
     StopSounds();
   }
-  
+
   if(sensorticks == sampleDelay) {
       sensorticks = 0;
       if(autoLight) {
         // read the value from the sensor:
         sensorValue = analogRead(sensorPin);
-        if(debug) 
+        if(debug)
           Serial.println("Sensor Value: " + String(sensorValue));
         if(sensorValue < (threshold - stickiness)) {
           if(lastSample == LOW) { // two consecutive samples
@@ -165,7 +172,7 @@ ISR(TIMER0_COMPA_vect){
           lastSample = HIGH;
           sampleCount = 0;
         }
-      }  
+      }
     }
   }
   if(debug) {
@@ -178,10 +185,19 @@ ISR(TIMER0_COMPA_vect){
 void HornPress() {
   if (digitalRead(hornPin) == LOW)
     PlaySound(soundPinBell);
+  hornticks = 0;
+  attachInterrupt(digitalPinToInterrupt(hornPin), HornRelease, RISING);
+}
+
+void HornRelease() {
+  if (hornticks >= 500) {
+    PlaySound(soundPinMusic);
+  hornticks = 0;
+  attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
 }
 
 void ButtonPress() {
-  if(debug) 
+  if(debug)
     Serial.println("button pressed");
   if(digitalRead(buttonPin) == LOW) {
     buttonticks = 0;
@@ -190,7 +206,7 @@ void ButtonPress() {
 }
 
 void ButtonRelease() { // button released
-  if(debug) 
+  if(debug)
     Serial.println("button released duration:" + String(buttonticks));
   attachInterrupt(digitalPinToInterrupt(buttonPin), ButtonPress, FALLING);
   if (buttonticks > 80 && buttonticks < 1000) {
@@ -268,7 +284,7 @@ void HL(int hlState) {
     Serial.println("Headlight set to " + String(hlState));
   analogWrite(hlPin, hlState);
 }
-   
+
 void RL(boolean rlState) {
   if(debug)
     Serial.println("Rear light is " + String(rlState));
@@ -279,7 +295,6 @@ void RL(boolean rlState) {
 void RL(int rlState) {
   if(debug)
     Serial.println("Rear Light set to " + String(rlState));
-  analogWrite(rearPin, rlState);
+    digitalWrite(rearPin, LOW);
   rearLightState = false;
 }
-  
