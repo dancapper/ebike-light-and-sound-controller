@@ -5,7 +5,7 @@
 // license: use however you like
 
 #define versionMajor       1
-#define versionMinor       05
+#define versionMinor       06
 
 // Hardware configuration
 
@@ -22,7 +22,7 @@
 #define hlPin             10  // select the pin for the headlight driver
 #define rearPin           11  // pin for rear light
 
-// Button functions:
+// Button functions
 // <1s = Auto / Headlight On toggle
 // >1s <5s = Lights off completely
 // >5s = play music
@@ -185,13 +185,14 @@ ISR(TIMER0_COMPA_vect){
 void HornPress() {
   if (digitalRead(hornPin) == LOW)
   {
-    PlaySound(soundPinBell);
     hornticks = 0;
     attachInterrupt(digitalPinToInterrupt(hornPin), HornRelease, RISING);
   }
 }
 
 void HornRelease() {
+  if (hornticks >= 50 and hornticks < 500)
+    PlaySound(soundPinBell);
   if (hornticks >= 500)
     PlaySound(soundPinMusic);
   attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
@@ -210,7 +211,7 @@ void ButtonRelease() { // button released
   if(debug)
     Serial.println("button released duration:" + String(buttonticks));
   attachInterrupt(digitalPinToInterrupt(buttonPin), ButtonPress, FALLING);
-  if (buttonticks > 80 && buttonticks < 1000) {
+  if (buttonticks > 50 && buttonticks < 1000) {
     if(autoLight) {
       autoLight = false;
       HL(true, true);
