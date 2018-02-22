@@ -5,7 +5,7 @@
 // license: use however you like
 
 #define versionMajor       1
-#define versionMinor       04
+#define versionMinor       05
 
 // Hardware configuration
 
@@ -184,15 +184,16 @@ ISR(TIMER0_COMPA_vect){
 
 void HornPress() {
   if (digitalRead(hornPin) == LOW)
+  {
     PlaySound(soundPinBell);
-  hornticks = 0;
-  attachInterrupt(digitalPinToInterrupt(hornPin), HornRelease, RISING);
+    hornticks = 0;
+    attachInterrupt(digitalPinToInterrupt(hornPin), HornRelease, RISING);
+  }
 }
 
 void HornRelease() {
   if (hornticks >= 500)
     PlaySound(soundPinMusic);
-  hornticks = 0;
   attachInterrupt(digitalPinToInterrupt(hornPin), HornPress, FALLING);
 }
 
@@ -226,7 +227,6 @@ void ButtonRelease() { // button released
   } else if (buttonticks >= 5000) {
     PlaySound(soundPinMusic);
   }
-  buttonticks = 0;
 }
 
 void PlaySound(int soundPin) {
@@ -295,6 +295,6 @@ void RL(boolean rlState) {
 void RL(int rlState) {
   if(debug)
     Serial.println("Rear Light set to " + String(rlState));
-    digitalWrite(rearPin, LOW);
+  analogWrite(rearPin, rlState);
   rearLightState = false;
 }
